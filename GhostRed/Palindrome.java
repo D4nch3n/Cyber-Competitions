@@ -1,7 +1,7 @@
 import java.util.*;
 import java.io.*;
 import java.lang.*;
-public class Main{
+public class Palindrome{
   public static boolean istPalindrom(char[] wort){
         char[] reverse = new char[wort.length];
         int index = wort.length - 1;
