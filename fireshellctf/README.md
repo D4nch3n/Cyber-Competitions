@@ -3,4 +3,4 @@ Even though this had a low point value, this is definitely the hardest CTF binar
 
 ## Problem Statement:
 
-![alt text](img/problem_statement.png "Chall")
+![alt text](imgs/problem_statement.png "Chall")
