@@ -67,7 +67,7 @@ What went wrong? Well, a closer look at the disassembly reviewed the answer. A v
 Unfortunately when we tried to write anything to that location, we ran into a few more problems:
 
 First, our buffer is only 16 bytes long, which is very, very small. The second issue is illustrated below:
-![alt text](imgs/almost.PNG "almost")
+![alt text](imgs/nullbyteproblem.PNG "almost")
 It's very subtle, but the second issue is that printf stops when it hits a single null byte (otherwise the AAA's will be printed), as C-strings are null terminated. However since 0x602020 is only a 24 bit address and printf only reads 64-bit addresses at a time, we must fill the rest of the 64-bit value with null bytes.
 
 This issue caused me 4 hours of pain, as I tried various methods of overflow, writing 0x602020 to some arbitrary location on the heap and fetching it, and writing 0x602020 to the stack itself and getting lucky with ASLR
