@@ -133,7 +133,7 @@ This is weird. Is Bob the only user in the database?! This took me again some ho
 ## Epilogue
 Sure enough, once we log in as the admin user, we obtain the flag:
 
-![alt text](imgs/finally.PNG "finally")
+![alt text](imgs/flagobtained.PNG "finally")
 
 I was kinda disappointed that we didn't need the admin password at the end. However, if we needed to obtain the admin password, we could just brute force it character by character using the $gte and the $lte operators.
 
