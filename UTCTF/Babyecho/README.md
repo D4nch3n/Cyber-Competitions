@@ -32,6 +32,7 @@ Wow, it really was such a simple binary! It takes in 0x32 characters through std
 
 How can we get a shell through such a simple binary? System() isn't referenced anywhere in the binary, so we can't overwrite something in the Global Offset Table with it, and even if we can we won't be able to pass our input string as the input to it ("/bin/sh"). However, what's interesting is that this program calls exit() to terminate the program. Since exit() is referenced in the binary, sure enough, it is in the Global Offset Table:
 ![alt text](imgs/GOT.PNG "Global Offset Table")
+
 What do we write to it though? Our biggest problem is that we only have one chance to exploit the binary before it exits out. However, in theory, what if we point it back to main()? If the program calls out exit(), it will instead call main, thus giving us a way to exploit the format string bug again as many times as we want!
 
 Sure enough, when we point exit() back to main, we see the "Give me a string to echo back!" prompt again, and so we can echo out as many times as we want!
