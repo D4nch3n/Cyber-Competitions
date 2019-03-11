@@ -1,5 +1,5 @@
 # BabyEcho (pwn)
-Despite it being worth 700 points, this had a low point value (the hardest pwn was worth 2000). However, this was a nice challenge to truely showcase how deadly format string bugs are.
+Despite it being worth 700 points, this had a low point value (the hardest pwn was worth 2000). However, this was a nice challenge to truly showcase how deadly format string bugs are.
 
 ## Problem Statement:
 
