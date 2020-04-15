@@ -1887,3 +1887,6 @@ I think what I like most about this challenge is that we had to exploit multiple
 
 Definitely looking forward to next year for sure :)
 
+## Other writeups:
+
+* Official writeup: https://github.com/toomanybananas/dawgctf-2020-writeups/blob/master/pwn/tiktok/WRITEUP.md
